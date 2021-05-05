@@ -455,6 +455,8 @@ def stdim_parser():
                         help='UCB Exploration coefficient')
     parser.add_argument('--ucb_window_length', type=int, default=10,
                         help='Sliding Window Average of the Past K mean returns')
+    parser.add_argument('--random_choice_step', type=int, default=10000,
+                        help='N-step random choice for exploring UCB')
 
     # cuda and seed
     parser.add_argument('--cuda', type=str, default='cuda:0',

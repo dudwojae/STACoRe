@@ -114,7 +114,7 @@ class STDIM_Rainbow:
 
                     if T % self.args.replay_frequency == 0:
                         # Train with n-step distributional double Q-learning
-                        self.learner.optimize(memory)
+                        self.learner.optimize(memory, timesteps=T)
 
                     if T % self.args.evaluation_interval == 0:
                         # Set STDIM_DQN (online network) to evaluation mode

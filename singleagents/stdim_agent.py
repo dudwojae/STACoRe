@@ -105,15 +105,22 @@ class STDIMAgent:
             param_t.requires_grad = False
 
     # Automatic data augmentation (Upper Confidence Bound)
-    def select_ucb_aug(self):
+    def select_ucb_aug(self, timestep: int):
 
         for i in range(self.num_augmentations):
             self.expl_action[i] = self.args.ucb_exploration_coef * \
                                   np.sqrt(np.log(self.total_num) / self.num_action[i])
             self.ucb_action[i] = self.qval_action[i] + self.expl_action[i]
 
-        ucb_aug_ids = np.argsort(self.ucb_action)[-2:]  # Two augmentations
-        ucb_aug_id1, ucb_aug_id2 = ucb_aug_ids[1], ucb_aug_ids[0]
+        if timestep < self.args.random_choice_step:  # Random choice
+            ucb_aug_ids = np.random.choice(np.argsort(self.ucb_action),
+                                           size=2,
+                                           replace=False)  # Two augmentations, No Duplication
+            ucb_aug_id1, ucb_aug_id2 = ucb_aug_ids[1], ucb_aug_ids[0]
+
+        else:
+            ucb_aug_ids = np.argsort(self.ucb_action)[-2:]  # Two augmentations
+            ucb_aug_id1, ucb_aug_id2 = ucb_aug_ids[1], ucb_aug_ids[0]
 
         return ucb_aug_id1, ucb_aug_id2, \
             self.aug_func_list[ucb_aug_id1], self.aug_func_list[ucb_aug_id2]
@@ -214,12 +221,12 @@ class STDIMAgent:
 
         return x1, x2, x1_l, x2_l, target
 
-    def optimize(self, memory):
+    def optimize(self, memory, timesteps: int):
         # Sample transitions
         idxs, states, actions, returns, next_states, nonterminals, weights = \
             memory.sample(self.args.batch_size)
 
-        self.current_aug_id1, self.current_aug_id2, aug1, aug2 = self.select_ucb_aug()
+        self.current_aug_id1, self.current_aug_id2, aug1, aug2 = self.select_ucb_aug(timestep=timesteps)
 
         # SimCLR update
         aug_states_1 = aug1(states).to(device=self.args.cuda)
