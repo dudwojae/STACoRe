@@ -7,7 +7,6 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 
-# SimCLR + ST-DIM + RAINBOW
 # Factorized NoisyLinear with bias
 class NoisyLinear(nn.Module):
     def __init__(self, in_features, out_features, std_init=0.5):
@@ -68,7 +67,7 @@ class Classifier(nn.Module):
         return self.cls(x1, x2)
 
 
-# MLP class for SimCLR projector & ST-DIM Global Head
+# MLP class for Self-Supervised Learning Projector & ST-DIM Global Head
 class MLPHead(nn.Module):
     def __init__(self, in_features: int, projection_size: int):
         super(MLPHead, self).__init__()
@@ -76,17 +75,18 @@ class MLPHead(nn.Module):
             nn.Linear(in_features, in_features, bias=False),
             nn.BatchNorm1d(in_features),
             nn.ReLU(inplace=True),
-            nn.Linear(in_features, projection_size)
+            nn.Linear(in_features, projection_size, bias=False),
+            # nn.BatchNorm1d(projection_size)  # FIXME
         )
 
     def forward(self, x: torch.Tensor):
         return self.mlp(x)
 
 
-# Q-value & SimCLR projector
-class STDIM_DQN(nn.Module):
+# Q-value & Self-Supervised & SpatioTemporal
+class STCL_DQN(nn.Module):
     def __init__(self, args, action_space):
-        super(STDIM_DQN, self).__init__()
+        super(STCL_DQN, self).__init__()
         self.args = args
         self.atoms = args.atoms
         self.action_space = action_space
@@ -155,17 +155,17 @@ class STDIM_DQN(nn.Module):
         else:
             q = F.softmax(q, dim=2)  # Probabilities with action over second dimension
 
-        # For SimCLR & ST-DIM Global feature
-        if isinstance(self.projector, nn.Module):
-            proj_z = self.projector(x3)
-
-        else:
+        # For Self-Supervised Learning Feature & ST-DIM Global feature
+        if self.args.ssl_option == 'moco':
             proj_z = torch.matmul(x3, self.W_h) + self.b_h  # Contrastive head
             proj_z = F.relu(self.ln1(proj_z))
             proj_z = torch.matmul(proj_z, self.W_c) + self.b_c  # Contrastive head
             proj_z = self.ln2(proj_z)
 
-        return q, x1, proj_z
+        else:
+            proj_z = self.projector(x3)
+
+        return q, x2, proj_z  # Change x1 to x2
 
     def reset_noise(self):
         for name, module in self.named_children():

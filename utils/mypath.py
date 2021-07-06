@@ -1,4 +1,10 @@
 import os
+import argparse
 
 
-result_path = './stdim_results/results_1'
+def mypath(args: argparse):
+
+    result_path = f'./{args.stcl_option}_{args.ssl_option}_results/StateAugMixExp_1'
+
+    return result_path
+

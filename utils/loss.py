@@ -5,62 +5,123 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class STDIMLoss(nn.Module):
+    def __init__(self, args: argparse):
+        super(STDIMLoss, self).__init__()
+
+        self.args = args
+
+    def forward(self,
+                global_t: torch.Tensor,
+                local_t_map: torch.Tensor,
+                local_t_prev_map: torch.Tensor,
+                local_t_n_map: torch.Tensor):
+
+        # Permute (B, C, H, W) -> (B, W, H, C)
+        local_t_map = local_t_map.permute(0, 3, 2, 1)
+        local_t_prev_map = local_t_prev_map.permute(0, 3, 2, 1)
+        local_t_n_map = local_t_n_map.permute(0, 3, 2, 1)
+
+        # Loss 1: Global-Local
+        global_t = global_t.unsqueeze(1).unsqueeze(1). \
+            expand(-1, local_t_prev_map.size(1), local_t_prev_map.size(2), self.args.projection_size)
+
+        target = torch.cat((torch.ones_like(global_t[:, :, :, 0]),
+                            torch.zeros_like(global_t[:, :, :, 0])), dim=0).to(device=self.args.cuda)
+
+        x1 = torch.cat([global_t, global_t], dim=0)
+        x2 = torch.cat([local_t_prev_map, local_t_n_map], dim=0)
+
+        shuffled_idxs = torch.randperm(len(target))
+        x1, x2, target = x1[shuffled_idxs], x2[shuffled_idxs], target[shuffled_idxs]
+
+        # Loss 2: Local-Local
+        x1_l = torch.cat([local_t_map, local_t_map], dim=0)
+        x2_l = torch.cat([local_t_prev_map, local_t_n_map], dim=0)
+
+        x1_l, x2_l = x1_l[shuffled_idxs], x2_l[shuffled_idxs]
+
+        return x1, x2, x1_l, x2_l, target
+
+
+class MoCoLoss(nn.Module):
+    def __init__(self, args: argparse):
+        super(MoCoLoss, self).__init__()
+
+        self.args = args
+
+    def forward(self, network_weights,
+                online_features: torch.FloatTensor,
+                target_features: torch.FloatTensor):
+
+        z_proj = torch.matmul(network_weights, target_features.T)
+        logits = torch.matmul(online_features, z_proj)
+        logits = (logits - torch.max(logits, 1)[0][:, None])
+        logits = logits * 0.1
+        labels = torch.arange(logits.shape[0]).long().to(device=self.args.cuda)
+
+        return logits, labels
+
+
+class BYOLLoss(nn.Module):
+    def __init__(self, args: argparse):
+        super(BYOLLoss, self).__init__()
+
+        self.args = args
+
+    def forward(self, augmentation1: nn.Module,
+                augmentation2: nn.Module,
+                states: torch.FloatTensor,
+                next_states: torch.FloatTensor):
+
+        # Apply augmentation & Switch
+        states_aug1 = augmentation1.mixing(states).to(device=self.args.cuda)
+        next_states_aug2 = augmentation2.mixing(next_states).to(device=self.args.cuda)
+
+        # For Switch
+        states_aug2 = next_states_aug2
+        next_states_aug1 = states_aug1
+
+        return states_aug1, states_aug2, next_states_aug1, next_states_aug2
+
+    @staticmethod
+    def calculate_loss(pred, true):
+        pred = F.normalize(pred, dim=1)
+        true = F.normalize(true, dim=1)
+
+        return 2 - 2 * (pred * true).sum(dim=-1)
+
+
 class SimCLRLoss(nn.Module):
-    def __init__(self, args: argparse, temperature: float):
+    def __init__(self, args: argparse):
         super(SimCLRLoss, self).__init__()
 
         self.args = args
-        self.temperature = temperature
 
-    def forward(self, features: torch.FloatTensor):
-        """For SimCLR"""
+    def forward(self, features: torch.FloatTensor, n_views: int = 2):
 
-        _, num_views, _ = features.size()
+        labels = torch.cat([torch.arange(self.args.batch_size) for i in range(n_views)], dim=0)
+        labels = (labels.unsqueeze(0) == labels.unsqueeze(1)).float()
+        labels = labels.to(device=self.args.cuda)
 
-        # Normalize features to lie on a unit hypershere
-        features = F.normalize(features, dim=-1)
-        features = torch.cat(torch.unbind(features, dim=1), dim=0)  # (B, N, F) -> (NB, F)
-        contrasts = features
+        features = F.normalize(features, dim=1)
 
-        # Compute logits (aka. similarity scores) & numerically stabilize them
-        logits = features @ contrasts.T  # (NB, F) x (F, NB * world_size)
-        logits = logits.div(self.temperature)
+        similarity_matrix = torch.matmul(features, features.T)
 
-        # Compute masks
-        _, pos_mask, neg_mask = self.create_masks(logits.size(), self.args, num_views)
+        # Discard the main diagonal from both: labels and similarities matrix
+        mask = torch.eye(labels.shape[0], dtype=torch.bool).to(device=self.args.cuda)
+        labels = labels[~mask].view(labels.shape[0], -1)
+        similarity_matrix = similarity_matrix[~mask].view(similarity_matrix.shape[0], -1)
 
-        # Compute loss
-        numerator = logits * pos_mask
-        denominator = torch.exp(logits) * pos_mask.logical_or(neg_mask)
-        denominator = denominator.sum(dim=1, keepdim=True)
-        log_prob = numerator - torch.log(denominator)
-        mean_log_prob = (log_prob * pos_mask) / pos_mask.sum(dim=1, keepdim=True)
-        loss = torch.neg(mean_log_prob)
-        loss = loss.sum(dim=1).mean()
+        # Select and combine multiple positives
+        positives = similarity_matrix[labels.bool()].view(labels.shape[0], -1)
 
-        return loss, logits, pos_mask
+        # Select only the negatives the negatives
+        negatives = similarity_matrix[~labels.bool()].view(similarity_matrix.shape[0], -1)
 
-    @staticmethod
-    @torch.no_grad()
-    def create_masks(shape, args: argparse, num_views: int = 2):
+        logits = torch.cat([positives, negatives], dim=1)
+        labels = torch.zeros(logits.shape[0], dtype=torch.long).to(device=self.args.cuda)
 
-        device = args.cuda
-        nL, nG = shape
+        logits = logits / self.args.temperature
 
-        local_mask = torch.eye(nL // num_views, device=device).repeat(2, 2)  # self+positive indicator
-        local_pos_mask = local_mask - torch.eye(nL, device=device)  # positive indicator
-        local_neg_mask = torch.ones_like(local_mask) - local_mask  # negative indicator
-
-        # Global mask of self+positive indicators
-        global_mask = torch.zeros(nL, nG, device=device)
-        global_mask[:, nL * 0 * (0 + 1)] = local_mask
-
-        # Global mask of positive indicators
-        global_pos_mask = torch.zeros_like(global_mask)
-        global_pos_mask[:, nL * 0 * (0 + 1)] = local_pos_mask
-
-        # Global mask of negative indicators
-        global_neg_mask = torch.ones_like(global_mask)
-        global_neg_mask[:, nL * 0 * (0 + 1)] = local_neg_mask
-
-        return global_mask, global_pos_mask, global_neg_mask
+        return logits, labels

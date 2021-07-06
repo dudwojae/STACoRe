@@ -53,7 +53,8 @@ def test(args, T, learner, val_memory, metrics, result_path, evaluate=False):
         # Append to results and save metrics
         metrics['rewards'].append(T_rewards)
         metrics['Qs'].append(T_Qs)
-        torch.save(metrics, os.path.join(result_path, 'stdim_rainbow_metrics.pt'))
+        torch.save(metrics, os.path.join(result_path,
+                                         f'{args.stcl_option}_{args.ssl_option}_rainbow_metrics.pt'))
 
         # Plot
         _plot_line(metrics['steps'], metrics['rewards'], 'Reward', path=result_path)

@@ -6,14 +6,21 @@ import numpy as np
 
 import torch
 
-from utils.args import stdim_parser
-from tasks.stdim import STDIM_Rainbow
-from utils.mypath import result_path
+from utils.args import stcl_parser
+from tasks.stcl import STCL_Rainbow
+from utils.mypath import mypath
+
+import warnings
+warnings.filterwarnings(action='ignore')
 
 
 def main(args, game_name):
+
+    # Define Save Path
+    result_path = mypath(args)
+
     args.game = game_name
-    xid = f'stdim-{args.game}-{str(args.seed)}'
+    xid = f'{args.game}-{str(args.seed)}'
     args.id = xid
 
     print(' ' * 26 + 'Options')
@@ -30,16 +37,16 @@ def main(args, game_name):
         json.dump(args.__dict__, f, indent=2)
 
     np.random.seed(args.seed)
-    torch.manual_seed(np.random.randint(1, 10000))
-    torch.cuda.manual_seed(np.random.randint(1, 10000))
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.enabled = args.enable_cudnn
 
-    curl_rainbow = STDIM_Rainbow(args, results_dir)
-    curl_rainbow.run_stdim_rainbow()
+    stcl_rainbow = STCL_Rainbow(args, results_dir)
+    stcl_rainbow.run_stcl_rainbow()
 
 
 if __name__ == '__main__':
-    parser = stdim_parser()
+    parser = stcl_parser()
     args = parser.parse_args()
 
     game_list = ['alien', 'amidar', 'assault', 'asterix', 'bank_heist',
@@ -49,5 +56,8 @@ if __name__ == '__main__':
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
 
-    for game_name in game_list:
-        main(args, game_name)
+    for ssl in ['none', 'moco', 'simclr', 'byol']:
+        args.ssl_option = ssl
+
+        for game_name in game_list:
+            main(args, game_name)

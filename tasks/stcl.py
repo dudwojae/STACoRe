@@ -9,31 +9,25 @@ import numpy as np
 from tqdm import trange
 from datetime import datetime
 
-from utils.summary import TensorboardSummary
 from utils.memory import ReplayMemory
 from environment.env import Atari_Env
 
-from singleagents.stdim_agent import STDIMAgent
-from tasks.stdim_test import test
+from singleagents.stcl_agent import STCLAgent
+from tasks.stcl_test import test
 
 
-class STDIM_Rainbow:
+class STCL_Rainbow:
     def __init__(self, args: argparse, result_path: str):
         self.args = args
         self.result_path = result_path
-
-        # FIXME
-        # Define Tensorboard summary
-        # self.summary = TensorboardSummary(result_path)
-        # self.writer = self.summary.create_summary()
 
         # Define Atari environment
         self.env = Atari_Env(args)
         self.env.train()
         self.action_space = self.env.action_space()
 
-        # Define STDIM Rainbow Agent
-        self.learner = STDIMAgent(args, self.env)
+        # Define STCL Rainbow Agent
+        self.learner = STCLAgent(args, self.env)
 
         # Define metrics
         self.metrics = {'steps': [],
@@ -41,7 +35,7 @@ class STDIM_Rainbow:
                         'Qs': [],
                         'best_avg_reward': -float('inf')}
 
-    def run_stdim_rainbow(self):
+    def run_stcl_rainbow(self):
         # If a model is provided, and evaluate is fale, presumably we want to resume, so try to load memory
         if self.args.model is not None and not self.args.evaluate:
 
@@ -73,7 +67,7 @@ class STDIM_Rainbow:
             T += 1
 
         if self.args.evaluate:
-            # Set STDIM_DQN (online network) to evaluation mode
+            # Set STCL_DQN (online network) to evaluation mode
             self.learner.eval()
             avg_reward, avg_Q = test(self.args,
                                      0,
@@ -116,8 +110,12 @@ class STDIM_Rainbow:
                         # Train with n-step distributional double Q-learning
                         self.learner.optimize(memory, timesteps=T)
 
+                        if self.args.ssl_option == 'moco' or self.args.ssl_option == 'byol':
+                            # MoCo & BYOL Target Network Update
+                            self.learner.update_momentum_net()
+
                     if T % self.args.evaluation_interval == 0:
-                        # Set STDIM_DQN (online network) to evaluation mode
+                        # Set STCL_DQN (online network) to evaluation mode
                         self.learner.eval()
 
                         # Test
@@ -127,12 +125,17 @@ class STDIM_Rainbow:
                                                  val_memory,
                                                  self.metrics,
                                                  self.result_path)
-                        self.log(f'T = {str(T)} / {str(self.args.T_max)} '
-                                 f'| Avg.reward: {str(avg_reward)} | Avg. Q: {str(avg_Q)}'
-                                 f'| Aug1: {self.learner.current_aug_id1}'  # Add Aug1 log
-                                 f'| Aug2: {self.learner.current_aug_id2}')  # Add Aug2 log
 
-                        # Set STDIM_DQN (online network) back to training mode
+                        if self.args.ucb_option:
+                            self.log(f'T = {str(T)} / {str(self.args.T_max)} '
+                                     f'| Avg.reward: {str(avg_reward)} | Avg. Q: {str(avg_Q)}'
+                                     f'| Augmentations: {self.learner.current_aug_id}')  # Add Augmentations log
+
+                        else:
+                            self.log(f'T = {str(T)} / {str(self.args.T_max)} '
+                                     f'| Avg.reward: {str(avg_reward)} | Avg. Q: {str(avg_Q)}')
+
+                        # Set STCL_DQN (online network) back to training mode
                         self.learner.train()
 
                         # If memory path provided, save it
@@ -145,14 +148,26 @@ class STDIM_Rainbow:
 
                     # Checkpoint the network
                     if (self.args.checkpoint_interval != 0) and (T % self.args.checkpoint_interval == 0):
-                        self.learner.save(self.result_path)
+                        self.learner.save(self.result_path,
+                                          name=f'{self.args.stcl_option}_{self.args.ssl_option}_rainbow.pt')
 
                 state = next_state
 
         self.env.close()
 
-    @staticmethod
-    def log(s):
+    def log(self, s):
+        filename = os.path.join(self.result_path, 'log.txt')
+
+        if not os.path.exists(filename) or s is None:
+            f = open(filename, 'w')
+
+        else:
+            f = open(filename, 'a')
+
+        msg = f"[{str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))}] {s}"
+        f.write(str(msg) + '\n')
+        f.close()
+
         print(f"[{str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))}] {s}")
 
     @staticmethod
