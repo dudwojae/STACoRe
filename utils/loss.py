@@ -54,6 +54,9 @@ class MoCoLoss(nn.Module):
                 online_features: torch.FloatTensor,
                 target_features: torch.FloatTensor):
 
+        online_features = F.normalize(online_features, dim=1)
+        target_features = F.normalize(target_features, dim=1)
+
         z_proj = torch.matmul(network_weights, target_features.T)
         logits = torch.matmul(online_features, z_proj)
         logits = (logits - torch.max(logits, 1)[0][:, None])
