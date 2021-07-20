@@ -17,8 +17,9 @@ from utils.loss import STDIMLoss, MoCoLoss, BYOLLoss, SimCLRLoss
 
 
 class STCLAgent:
-    def __init__(self, args: argparse, env):
+    def __init__(self, args: argparse, env, result_path: str):
         self.args = args
+        self.result_path = result_path
         self.action_space = env.action_space()
         self.atoms = args.atoms
         self.Vmin = args.V_min
@@ -218,9 +219,14 @@ class STCLAgent:
             mixed_next_states = self.stateaugmix.mixing(next_states)
 
         else:
-            # Not Implement Data Augmentations
-            mixed_states = states
-            mixed_next_states = next_states
+            # Choose Implementation Data Augmentations for ST-DIM (Without SSL)
+            if self.args.stcl_aug_on:
+                mixed_states = self.stateaugmix.mixing(states)
+                mixed_next_states = self.stateaugmix.mixing(next_states)
+
+            else:
+                mixed_states = states
+                mixed_next_states = next_states
 
         if self.args.ssl_option == 'moco':
             _, _, z_anchor = self.online_net(mixed_states, log=True)
@@ -266,12 +272,12 @@ class STCLAgent:
 
         if self.args.stcl_option == 'stdim':
             # ST-DIM Update
-            _, feature_map_t, stdim_z = self.online_net(states, log=True)  # anchor
-            _, feature_map_t1, _ = self.online_net(next_states, log=True)  # positives
+            _, feature_map_t, stdim_z = self.online_net(mixed_states, log=True)  # anchor
+            _, feature_map_t1, _ = self.online_net(mixed_next_states, log=True)  # positives
 
             # negative examples -> shuffle states
             shuffle_states = torch.stack(
-                random.sample(list(next_states), len(next_states))
+                random.sample(list(mixed_next_states), len(mixed_next_states))
             )
             _, feature_map_tn, _ = self.online_net(shuffle_states, log=True)
 
@@ -348,6 +354,17 @@ class STCLAgent:
         torch.nn.utils.clip_grad_norm_(self.optim_params, self.args.clip_value)
         self.optimizer.step()
 
+        # Save SSL Loss with RL Loss
+        if timesteps % 1000 == 0:
+            if self.spatiotemporal_on and self.ssl_on:
+                self.log_loss(f'Reinforcement Learning = {rl_loss.mean().item()}'
+                              f'| Self-Supervised Learning = {ssl_loss.item()}'
+                              f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}')
+
+            elif self.spatiotemporal_on and not self.ssl_on:
+                self.log_loss(f'Reinforcement Learning = {rl_loss.mean().item()}'
+                              f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}')
+
         # Update priorities of sampled transitions
         memory.update_priorities(idxs, loss.detach().cpu().numpy())
 
@@ -364,6 +381,18 @@ class STCLAgent:
             # (Optional) Save Augmentation function list as CSV
             auglist = pd.DataFrame(self.aug_func_list, columns=['aug1', 'aug2'])
             auglist.to_csv(os.path.join(path, 'AugCombination.csv'), index=True)
+
+    def log_loss(self, s, name='loss.txt'):
+        filename = os.path.join(self.result_path, name)
+
+        if not os.path.exists(filename) or s is None:
+            f = open(filename, 'w')
+
+        else:
+            f = open(filename, 'a')
+
+        f.write(str(s) + '\n')
+        f.close()
 
     # Evaluates Q-value based on single state (no batch)
     def evaluate_q(self, state):

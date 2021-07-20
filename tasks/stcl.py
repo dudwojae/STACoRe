@@ -27,7 +27,7 @@ class STCL_Rainbow:
         self.action_space = self.env.action_space()
 
         # Define STCL Rainbow Agent
-        self.learner = STCLAgent(args, self.env)
+        self.learner = STCLAgent(args, self.env, self.result_path)
 
         # Define metrics
         self.metrics = {'steps': [],

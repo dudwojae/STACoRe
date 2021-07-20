@@ -123,6 +123,9 @@ def stcl_parser():
                         default='simclr', metavar='ARCH',
                         choices=['moco', 'byol', 'simclr' 'none'],
                         help='Self-Supervised Contrastive Learning Method Switch')
+    parser.add_argument('--stcl_aug_on', type=bool,
+                        default=True,
+                        help='Implementation Data Augmentation for Spatio-Temporal Contrastive Learning')
 
     # Upper Confidence Bound Multi-Armed Bandit Problem parameter
     parser.add_argument('--ucb_exploration_coef', type=float, default=0.5,

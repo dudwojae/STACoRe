@@ -56,7 +56,7 @@ if __name__ == '__main__':
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
 
-    for ssl in ['none', 'moco', 'simclr', 'byol']:
+    for ssl in ['none']:
         args.ssl_option = ssl
 
         for game_name in game_list:
