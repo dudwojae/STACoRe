@@ -2,6 +2,7 @@ from __future__ import division
 
 import os
 import json
+import argparse
 import numpy as np
 
 import torch
@@ -10,14 +11,20 @@ from utils.args import stcl_parser
 from tasks.stcl import STCL_Rainbow
 from utils.mypath import mypath
 
+from itertools import product
+
 import warnings
 warnings.filterwarnings(action='ignore')
 
 
-def main(args, game_name):
+def my_product(inp):
+    return (dict(zip(inp.keys(), values)) for values in product(*inp.values()))
+
+
+def main(args: argparse, game_name: str = None, exp_num: int = None):
 
     # Define Save Path
-    result_path = mypath(args)
+    result_path = mypath(args, exp_num=exp_num)
 
     args.game = game_name
     xid = f'{args.game}-{str(args.seed)}'
@@ -56,8 +63,24 @@ if __name__ == '__main__':
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
 
-    for ssl in ['none']:
-        args.ssl_option = ssl
+    experiments = np.random.randint(12345, size=10)
+
+    # Baseline
+    # for i, exp_seed in enumerate(experiments):
+    #     args.seed = int(exp_seed)
+    #     args.stcl_option = 'stdim'
+    #     args.ucb_option = False
+    #     args.ssl_option = 'none'
+    #
+    #     for game_name in game_list:
+    #         main(args, game_name, exp_num=int(i+1))
+
+    # Proposed Method
+    for i, exp_seed in enumerate(experiments):
+        args.seed = int(exp_seed)
+        args.stcl_option = 'stdim'
+        args.ucb_option = True
+        args.ssl_option = 'simclr'
 
         for game_name in game_list:
-            main(args, game_name)
+            main(args, game_name, exp_num=int(i+1))

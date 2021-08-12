@@ -17,14 +17,24 @@ class UCBAugmentation(object):
 
         # Image-based augmentation option (Upper Confidence Bound)
         self.augmentations = {
-            'RandomCrop': nn.Sequential(aug.RandomCrop((80, 80)),
-                                        nn.ReplicationPad2d(4),
-                                        aug.RandomCrop((84, 84))),
-            'CenterCrop': nn.Sequential(aug.CenterCrop((84, 84))),
-            'CutOut': nn.Sequential(aug.RandomErasing(p=0.5)),
-            'Rotation': nn.Sequential(aug.RandomRotation(degrees=5.0)),
-            'HorizontalFlip': nn.Sequential(aug.RandomHorizontalFlip(p=0.1)),
-            'VerticalFlip': nn.Sequential(aug.RandomVerticalFlip(p=0.1)),
+            'CutOut': aug.RandomErasing(p=0.5),
+            'Affine': aug.RandomAffine(degrees=5.,
+                                       translate=(0.14, 0.14),
+                                       scale=(0.9, 1.1),
+                                       shear=(-5, 5),
+                                       p=0.5),
+            'Translate': aug.RandomAffine(translate=(0.14, 0.14),
+                                          shear=None,
+                                          scale=None,
+                                          p=0.5,
+                                          degrees=0.),
+            'Shear': aug.RandomAffine(shear=(-5, 5),
+                                      translate=None,
+                                      scale=None, p=0.5,
+                                      degrees=0.),
+            'Shift': nn.Sequential(nn.ReplicationPad2d(4),
+                                   aug.RandomCrop((args.resize, args.resize))),
+            'Intensity': Intensity(scale=0.05)
         }
 
         self.aug_func_list = []
@@ -72,3 +82,14 @@ class UCBAugmentation(object):
         self.num_action[augmentation_id] += 1
         self.return_action[augmentation_id].append(-batch_returns.item())
         self.qval_action[augmentation_id] = np.mean(self.return_action[augmentation_id])
+
+
+class Intensity(nn.Module):
+    def __init__(self, scale):
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, x):
+        r = torch.randn((x.size(0), 1, 1, 1), device=x.device)
+        noise = 1.0 + (self.scale * r.clamp(-2.0, 2.0))
+        return x * noise

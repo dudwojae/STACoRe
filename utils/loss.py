@@ -44,57 +44,6 @@ class STDIMLoss(nn.Module):
         return x1, x2, x1_l, x2_l, target
 
 
-class MoCoLoss(nn.Module):
-    def __init__(self, args: argparse):
-        super(MoCoLoss, self).__init__()
-
-        self.args = args
-
-    def forward(self, network_weights,
-                online_features: torch.FloatTensor,
-                target_features: torch.FloatTensor):
-
-        online_features = F.normalize(online_features, dim=1)
-        target_features = F.normalize(target_features, dim=1)
-
-        z_proj = torch.matmul(network_weights, target_features.T)
-        logits = torch.matmul(online_features, z_proj)
-        logits = (logits - torch.max(logits, 1)[0][:, None])
-        logits = logits * 0.1
-        labels = torch.arange(logits.shape[0]).long().to(device=self.args.cuda)
-
-        return logits, labels
-
-
-class BYOLLoss(nn.Module):
-    def __init__(self, args: argparse):
-        super(BYOLLoss, self).__init__()
-
-        self.args = args
-
-    def forward(self, augmentation1: nn.Module,
-                augmentation2: nn.Module,
-                states: torch.FloatTensor,
-                next_states: torch.FloatTensor):
-
-        # Apply augmentation & Switch
-        states_aug1 = augmentation1.mixing(states).to(device=self.args.cuda)
-        next_states_aug2 = augmentation2.mixing(next_states).to(device=self.args.cuda)
-
-        # For Switch
-        states_aug2 = next_states_aug2
-        next_states_aug1 = states_aug1
-
-        return states_aug1, states_aug2, next_states_aug1, next_states_aug2
-
-    @staticmethod
-    def calculate_loss(pred, true):
-        pred = F.normalize(pred, dim=1)
-        true = F.normalize(true, dim=1)
-
-        return 2 - 2 * (pred * true).sum(dim=-1)
-
-
 class SimCLRLoss(nn.Module):
     def __init__(self, args: argparse):
         super(SimCLRLoss, self).__init__()

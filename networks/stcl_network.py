@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+from utils.layers import weights_init
+
 
 # Factorized NoisyLinear with bias
 class NoisyLinear(nn.Module):
@@ -72,12 +74,9 @@ class MLPHead(nn.Module):
     def __init__(self, in_features: int, projection_size: int):
         super(MLPHead, self).__init__()
         self.mlp = nn.Sequential(
-            nn.Linear(in_features, in_features, bias=False),
-            nn.BatchNorm1d(in_features),
+            nn.Linear(in_features, in_features, bias=True),
             nn.ReLU(inplace=True),
-            nn.Linear(in_features, projection_size, bias=False),
-            # nn.BatchNorm1d(projection_size)  # FIXME
-        )
+            nn.Linear(in_features, projection_size, bias=True))
 
     def forward(self, x: torch.Tensor):
         return self.mlp(x)
@@ -135,6 +134,9 @@ class STCL_DQN(nn.Module):
 
         # MLP head (nn.Module)
         self.projector = MLPHead(self.conv_output_size, args.projection_size)
+
+        # Network Initial weights
+        self.apply(weights_init)
 
     def forward(self, x, log=False):
         x1 = self.convs[:2](x)

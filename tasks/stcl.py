@@ -110,10 +110,6 @@ class STCL_Rainbow:
                         # Train with n-step distributional double Q-learning
                         self.learner.optimize(memory, timesteps=T)
 
-                        if self.args.ssl_option == 'moco' or self.args.ssl_option == 'byol':
-                            # MoCo & BYOL Target Network Update
-                            self.learner.update_momentum_net()
-
                     if T % self.args.evaluation_interval == 0:
                         # Set STCL_DQN (online network) to evaluation mode
                         self.learner.eval()
