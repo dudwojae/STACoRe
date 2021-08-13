@@ -63,7 +63,8 @@ if __name__ == '__main__':
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
 
-    experiments = np.random.randint(12345, size=10)
+    experiments = [1840, 9178, 2885, 11697, 4690,
+                   6877, 2436, 7749, 2584, 396]
 
     # Baseline
     # for i, exp_seed in enumerate(experiments):
