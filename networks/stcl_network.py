@@ -1,5 +1,6 @@
 from __future__ import division
 
+import argparse
 import math
 
 import torch
@@ -11,8 +12,12 @@ from utils.layers import weights_init
 
 # Factorized NoisyLinear with bias
 class NoisyLinear(nn.Module):
-    def __init__(self, in_features, out_features, std_init=0.5):
+    def __init__(self,
+                 in_features: int,
+                 out_features: int,
+                 std_init: float = 0.5):
         super(NoisyLinear, self).__init__()
+
         self.module_name = 'noisy_linear'
         self.in_features = in_features
         self.out_features = out_features
@@ -37,7 +42,7 @@ class NoisyLinear(nn.Module):
         self.bias_mu.data.uniform_(-mu_range, mu_range)
         self.bias_sigma.data.fill_(self.std_init / math.sqrt(self.out_features))
 
-    def _scale_noise(self, size):
+    def _scale_noise(self, size: int):
         x = torch.randn(size)
 
         return x.sign().mul_(x.abs().sqrt_())
@@ -49,7 +54,7 @@ class NoisyLinear(nn.Module):
         self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in))
         self.bias_epsilon.copy_(epsilon_out)
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor):
         if self.training:
             return F.linear(input, self.weight_mu + self.weight_sigma * self.weight_epsilon,
                             self.bias_mu + self.bias_sigma * self.bias_epsilon)
@@ -61,18 +66,26 @@ class NoisyLinear(nn.Module):
 # Classifier for ST-DIM Calculation
 class Classifier(nn.Module):
     def __init__(self,
-                 feature1: int, feature2: int):
+                 feature1: int,
+                 feature2: int):
         super().__init__()
+
         self.cls = nn.Bilinear(feature1, feature2, 1)
 
-    def forward(self, x1: torch.Tensor, x2: torch.Tensor):
+    def forward(self,
+                x1: torch.Tensor,
+                x2: torch.Tensor):
+
         return self.cls(x1, x2)
 
 
 # MLP class for Self-Supervised Learning Projector & ST-DIM Global Head
 class MLPHead(nn.Module):
-    def __init__(self, in_features: int, projection_size: int):
+    def __init__(self,
+                 in_features: int,
+                 projection_size: int):
         super(MLPHead, self).__init__()
+
         self.mlp = nn.Sequential(
             nn.Linear(in_features, in_features, bias=True),
             nn.ReLU(inplace=True),
@@ -84,8 +97,11 @@ class MLPHead(nn.Module):
 
 # Q-value & Self-Supervised & SpatioTemporal
 class STCL_DQN(nn.Module):
-    def __init__(self, args, action_space):
+    def __init__(self,
+                 args: argparse,
+                 action_space: int):
         super(STCL_DQN, self).__init__()
+
         self.args = args
         self.atoms = args.atoms
         self.action_space = action_space
@@ -138,7 +154,10 @@ class STCL_DQN(nn.Module):
         # Network Initial weights
         self.apply(weights_init)
 
-    def forward(self, x, log=False):
+    def forward(self,
+                x: torch.Tensor,
+                log=False):
+
         x1 = self.convs[:2](x)
         x2 = self.convs[2:](x1)
         # x = self.convs(x)

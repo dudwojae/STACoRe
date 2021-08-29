@@ -81,7 +81,7 @@ if __name__ == '__main__':
         args.seed = int(exp_seed)
         args.stcl_option = 'stdim'
         args.ucb_option = True
-        args.ssl_option = 'simclr'
+        args.ssl_option = 'supcon'
 
         for game_name in game_list:
             main(args, game_name, exp_num=int(i+1))

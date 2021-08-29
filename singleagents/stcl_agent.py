@@ -13,11 +13,15 @@ import kornia.augmentation as aug
 
 from networks.stcl_network import STCL_DQN, Classifier
 from utils.automatic import UCBAugmentation
-from utils.loss import STDIMLoss, SimCLRLoss
+from utils.loss import STDIMLoss, SimCLRLoss, SupConLoss
 
 
 class STCLAgent:
-    def __init__(self, args: argparse, env, result_path: str):
+    def __init__(self,
+                 args: argparse,
+                 env,
+                 result_path: str):
+
         self.args = args
         self.result_path = result_path
         self.action_space = env.action_space()
@@ -28,7 +32,7 @@ class STCLAgent:
         # Support (range) of z
         self.support = torch.linspace(args.V_min, args.V_max, self.atoms).to(device=args.cuda)
         self.delta_z = (args.V_max - args.V_min) / (self.atoms - 1)
-        self.coeff = args.lambda_loss if args.game in ['pong', 'boxing', 'private_eye', 'freeway'] else 1.
+        self.coeff = args.lambda_coef if args.game in ['pong', 'boxing', 'private_eye', 'freeway'] else 1.
 
         # Define Model (Default: Off-Policy Reinforcement Learning)
         self.online_net = STCL_DQN(args, self.action_space).to(device=args.cuda)
@@ -87,6 +91,12 @@ class STCLAgent:
 
             self.ssl_on = True
 
+        # Define Supervised Contrastive Learning Methods
+        elif self.args.ssl_option == 'supcon':
+            self.supcon_loss = SupConLoss(args=args)
+
+            self.ssl_on = True
+
         else:
             self.ssl_on = False
 
@@ -136,12 +146,19 @@ class STCLAgent:
     def update_target_net(self):
         self.target_net.load_state_dict(self.online_net.state_dict())
 
-    def optimize(self, memory, timesteps: int):
+    def optimize(self,
+                 memory,
+                 timesteps: int):
+
         # Sample transitions
         idxs, states, actions, returns, next_states, nonterminals, weights = \
             memory.sample(self.args.batch_size)
 
-        # Apply initial Data Augmentation (Random Crop)
+        # Apply initial Data Augmentation to States (Random Crop) for SSL
+        init_states1 = self.init_aug(states).to(device=self.args.cuda)
+        init_states2 = self.init_aug(states).to(device=self.args.cuda)
+
+        # Apply initial Data Augmentation to Next States (Random Crop) for ST-DIM
         init_states = self.init_aug(states).to(device=self.args.cuda)
         init_next_states = self.init_aug(next_states).to(device=self.args.cuda)
 
@@ -149,15 +166,14 @@ class STCLAgent:
         if self.spatiotemporal_on:
 
             if not self.args.ucb_option and not self.ssl_on:  # Baseline
-                aug_states = init_states
-                aug_next_states = init_next_states
+                print('We are experimenting with the baseline model.')
 
             elif self.args.ucb_option and self.ssl_on:  # Proposed Method
                 self.current_aug_id, aug_list = self.ucb.select_ucb_aug(timestep=timesteps)
                 aug_sequential = nn.Sequential(*aug_list)
 
-                aug_states = aug_sequential(init_states)
-                aug_next_states = aug_sequential(init_next_states)
+                aug_states1 = aug_sequential(init_states1)
+                aug_states2 = aug_sequential(init_states2)
 
             else:
                 raise NotImplementedError('We need to make the UCB and SSL switch mode the same.')
@@ -166,10 +182,16 @@ class STCLAgent:
             raise NotImplementedError('ST-DIM switch is off...')
 
         if self.args.ssl_option == 'simclr':
-            _, _, simclr_z = self.online_net(torch.cat([aug_states, aug_next_states], dim=0), log=True)
+            _, _, simclr_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
             logits, labels = self.simclr_loss(features=simclr_z)
 
             ssl_loss = (nn.CrossEntropyLoss()(logits, labels)).to(device=self.args.cuda)
+
+        elif self.args.ssl_option == 'supcon':
+            _, _, supcon_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
+
+            ssl_loss = self.supcon_loss(features=supcon_z,
+                                        labels=actions)
 
         if self.args.stcl_option == 'stdim':
             # ST-DIM Update
@@ -266,21 +288,28 @@ class STCLAgent:
         # Update priorities of sampled transitions
         memory.update_priorities(idxs, loss.detach().cpu().numpy())
 
-        # Update Upper Confidence Bound with SimCLR Loss, RL Loss
+        # Update Upper Confidence Bound with SSL Loss, RL Loss
+        # FIXME: Update with ssl_loss (old: rl_loss.mean() + ssl_loss)
         if self.args.ucb_option:
             self.ucb.update_ucb_values(augmentation_id=self.current_aug_id,
-                                       batch_returns=rl_loss.mean() + ssl_loss)
+                                       batch_returns=ssl_loss)
 
     # Save model parameters on current device (don't move model between devices)
-    def save(self, path, name='stdim_rainbow.pt'):
+    def save(self,
+             path: str,
+             name: str ='rainbow.pt'):
+
         torch.save(self.online_net.state_dict(), os.path.join(path, name))
 
         if self.args.ucb_option:
-            # (Optional) Save Augmentation function list as CSV
+            # Save Augmentation function list as CSV
             auglist = pd.DataFrame(self.aug_func_list, columns=['aug1', 'aug2'])
             auglist.to_csv(os.path.join(path, 'AugCombination.csv'), index=True)
 
-    def log_loss(self, s, name='loss.txt'):
+    def log_loss(self,
+                 s: str,
+                 name='loss.txt'):
+
         filename = os.path.join(self.result_path, name)
 
         if not os.path.exists(filename) or s is None:

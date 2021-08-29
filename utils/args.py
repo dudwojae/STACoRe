@@ -78,8 +78,8 @@ def stcl_parser():
     parser.add_argument('--target_update', type=int, default=1, metavar='τ',
                         help='Number of steps after which to update target network')
     # FIXME: Find Optimal Lambda
-    parser.add_argument('--lambda_loss', type=float, default=1.,
-                        help='Weighted contrastive loss')
+    parser.add_argument('--lambda_coef', type=float, default=1.,
+                        help='Weighted contrastive loss coefficient')
 
     # optimizer parameters (Don't Change)
     parser.add_argument('--clip_value', type=float, default=10, metavar='NORM',
@@ -109,7 +109,16 @@ def stcl_parser():
     parser.add_argument('--local_depth', type=int, default=64, metavar='SIZE',
                         help='Feature map depth size')
     parser.add_argument('--temperature', type=float, default=0.5,
-                        help='Logit scaling factor')
+                        help='Logit scaling factor (SimCLR)')
+
+    # Supervised Contrastive Learning parameter
+    parser.add_argument('--scl_temperature', type=float, default=0.1,
+                        help='Temperature for loss function (SupCon)')
+    parser.add_argument('--base_scl_temperature', type=float, default=0.1,
+                        help='SupCon temperature scaling factor (SupCon)')
+    parser.add_argument('--pos_candidate', type=int, default=32,
+                        choices=[32, 16, 8],
+                        help='Number of false negative or positive candidate based on euclidean distance')
 
     # Experiment Option (UCB, STDIM, SSL)
     parser.add_argument('--ucb_option', type=bool,
@@ -120,8 +129,8 @@ def stcl_parser():
                         help='SpatioTemporal Contrastive Learning Method Switch')
     parser.add_argument('--ssl_option', type=str,
                         default='simclr', metavar='ARCH',
-                        choices=['simclr' 'none'],
-                        help='Self-Supervised Contrastive Learning Method Switch')
+                        choices=['simclr' 'supcon', 'none'],
+                        help='Self-Supervised/Supervised Contrastive Learning Method Switch')
 
     # Upper Confidence Bound Multi-Armed Bandit Problem parameter
     parser.add_argument('--ucb_exploration_coef', type=float, default=0.5,

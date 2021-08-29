@@ -17,7 +17,10 @@ from tasks.stcl_test import test
 
 
 class STCL_Rainbow:
-    def __init__(self, args: argparse, result_path: str):
+    def __init__(self,
+                 args: argparse,
+                 result_path: str):
+
         self.args = args
         self.result_path = result_path
 
@@ -27,7 +30,9 @@ class STCL_Rainbow:
         self.action_space = self.env.action_space()
 
         # Define STCL Rainbow Agent
-        self.learner = STCLAgent(args, self.env, self.result_path)
+        self.learner = STCLAgent(args,
+                                 self.env,
+                                 self.result_path)
 
         # Define metrics
         self.metrics = {'steps': [],
@@ -108,7 +113,8 @@ class STCL_Rainbow:
 
                     if T % self.args.replay_frequency == 0:
                         # Train with n-step distributional double Q-learning
-                        self.learner.optimize(memory, timesteps=T)
+                        self.learner.optimize(memory,
+                                              timesteps=T)
 
                     if T % self.args.evaluation_interval == 0:
                         # Set STCL_DQN (online network) to evaluation mode
@@ -151,7 +157,7 @@ class STCL_Rainbow:
 
         self.env.close()
 
-    def log(self, s):
+    def log(self, s: str):
         filename = os.path.join(self.result_path, 'log.txt')
 
         if not os.path.exists(filename) or s is None:
