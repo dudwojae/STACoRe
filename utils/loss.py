@@ -91,6 +91,17 @@ class SupConLoss(nn.Module):
 
         self.args = args
 
+        # Fix positive pair from the same image.
+        pos_idx = torch.cat([
+            torch.arange(args.batch_size, args.batch_size * 2),
+            torch.arange(args.batch_size)], dim=0).view(-1, 1)
+
+        self.fixed_pos_mask = torch.scatter(
+            torch.zeros(args.batch_size * 2, args.batch_size * 2),
+            dim=1,
+            index=pos_idx,
+            value=1).to(device=args.cuda)
+
     def forward(self,
                 features: torch.FloatTensor,
                 n_views: int = 2,
@@ -102,7 +113,7 @@ class SupConLoss(nn.Module):
 
         Args:
             features: hidden vector of shape [batch_size * n_views, ...].
-            n_views: Like SimCLR.
+            n_views: 2.
             labels: ground Truth of shape [batch_size].
             mask: contrastive mask of shape [batch_size, batch_size], mask_{i, j}=1 if sample j
                 has the same class as sample i. Can be asymmetric.
@@ -122,36 +133,13 @@ class SupConLoss(nn.Module):
 
             labels = labels.contiguous().view(-1, 1)
 
-            if labels.shape[0] != self.args.batch_size:
+            if labels.shape[0] != self.args.batch_size * n_views:
                 raise ValueError('Number of labels does not match number of features.')
 
             mask = torch.eq(labels, labels.T).float().to(device=self.args.cuda)
 
         else:
             mask = mask.float().to(self.args.cuda)
-
-        # Normalize feature vector
-        features = F.normalize(features, dim=1)
-
-        # Computes batched the p-norm distance between each pair of the two collections of row vectors
-        distances = torch.cdist(features.detach(), features.detach(), p=2)
-
-        # Define the top k items with the highest distance and make mask based on the distance.
-        pos_idx = torch.topk(distances, self.args.pos_candidate).indices
-        dist_mask = torch.scatter(
-            torch.zeros_like(distances),
-            dim=1,
-            index=pos_idx,
-            value=1)
-
-        # Compute logits
-        anchor_dot_contrast = torch.div(
-            torch.matmul(features, features.T),  # Anchor dot Contrast
-            self.args.scl_temperature)
-
-        # For numerical stability
-        logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
-        logits = anchor_dot_contrast - logits_max.detach()
 
         # Mask-out self-contrast cases
         logits_mask = torch.scatter(
@@ -163,15 +151,51 @@ class SupConLoss(nn.Module):
         # Define mask based on same action labels except self-contrast cases
         mask = mask * logits_mask
 
-        # Compute log probability
-        exp_logits = torch.exp(logits) * logits_mask
-        log_prob = logits - torch.log(exp_logits.sum(dim=1, keepdim=True))
+        # Normalize feature vector
+        features = F.normalize(features, dim=1)
+
+        # Computes batched the p-norm distance between each pair of the two collections of row vectors
+        distances = torch.cdist(features.detach(), features.detach(), p=2)
+
+        # Only positive pair or candidates distance matrix
+        pos_distances = mask * distances
+
+        # Define the top k items with the highest distance and make mask based on the distance.
+        # The top k value is upper bound.
+        pos_topk = torch.topk(pos_distances, self.args.pos_candidate)
+        pos_topk_mask = (pos_topk.values > 0)  # If the value is 0, it is not the same label.
+        pos_topk_idx = pos_topk_mask * pos_topk.indices
+
+        # Make positive pair or candidates distance mask
+        pos_dist_mask = torch.scatter(
+            torch.zeros_like(pos_distances),
+            dim=1,
+            index=pos_topk_idx,
+            value=1)
+
+        # Process extracting upper & lower triangular matrix
+        pos_upper_triu = torch.triu(pos_dist_mask, diagonal=1)
+        pos_lower_triu = pos_upper_triu.T
 
         # Define our proposed method mask (same action labels and top k items with the highest distance)
-        final_mask = mask * dist_mask
+        pos_triu = pos_upper_triu + pos_lower_triu
+        final_pos_dist_mask = torch.max(pos_triu, self.fixed_pos_mask)
+
+        # Compute logits
+        anchor_dot_contrast = torch.div(
+            torch.matmul(features, features.T),  # Anchor dot Contrast
+            self.args.scl_temperature)
+
+        # For numerical stability
+        logits_max, _ = torch.max(anchor_dot_contrast, dim=1, keepdim=True)
+        logits = anchor_dot_contrast - logits_max.detach()
+
+        # Compute log probability
+        exp_logits = torch.exp(logits) * logits_mask
+        log_prob = logits - torch.log(exp_logits.sum(1, keepdim=True))
 
         # Compute mean of log-likelihood over positive
-        mean_log_prob_pos = (final_mask * log_prob).sum(dim=1) / final_mask.sum(dim=1)
+        mean_log_prob_pos = (final_pos_dist_mask * log_prob).sum(1) / final_pos_dist_mask.sum(1)
 
         # Supervised Contrastive Loss (SCL)
         loss = - (self.args.scl_temperature / self.args.base_scl_temperature) * mean_log_prob_pos

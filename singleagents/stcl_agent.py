@@ -137,7 +137,10 @@ class STCLAgent:
         return (a * self.support).sum(2).argmax(1).item()
 
     # Acts with an ε-greedy policy (used for evaluation only)
-    def act_epsilon_greedy(self, state: torch.Tensor, epsilon: float = 0.001):
+    def act_epsilon_greedy(self,
+                           state: torch.Tensor,
+                           epsilon: float = 0.001):
+
         # High ε can reduce evaluation scores drastically
         return np.random.randint(0, self.action_space) \
             if np.random.random() < epsilon else self.act(state)
@@ -191,7 +194,7 @@ class STCLAgent:
             _, _, supcon_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
 
             ssl_loss = self.supcon_loss(features=supcon_z,
-                                        labels=actions)
+                                        labels=actions.detach())
 
         if self.args.stcl_option == 'stdim':
             # ST-DIM Update
@@ -297,7 +300,7 @@ class STCLAgent:
     # Save model parameters on current device (don't move model between devices)
     def save(self,
              path: str,
-             name: str ='rainbow.pt'):
+             name: str = 'rainbow.pt'):
 
         torch.save(self.online_net.state_dict(), os.path.join(path, name))
 
