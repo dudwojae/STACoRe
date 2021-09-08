@@ -81,11 +81,11 @@ if __name__ == '__main__':
     # Proposed Method
     for i, exp_seed in enumerate(experiments):
         args.seed = int(exp_seed)
-        args.stcl_option = 'stdim'
-        args.ucb_option = True
-        args.ssl_option = 'supcon'
-        args.threshold_option = False
-        args.pos_threshold = None
+        args.stcl_option = 'stdim'  # Fix
+        args.ucb_option = True  # Fix
+        args.ssl_option = 'supcon'  # Fix
+        args.threshold_option = False  # Change
+        args.pos_threshold = None  # Change
 
         for game_name in game_list:
             main(args, game_name, exp_num=int(i+1))

@@ -164,7 +164,7 @@ class SupConLoss(nn.Module):
         # Threshold calculation and whether to use
         if self.args.threshold_option:
             # Calculate quantile threshold by distance values
-            distance_values = pos_distances.view(-1).detach().numpy()
+            distance_values = pos_distances.view(-1).cpu().detach().numpy()
             positive_value_mask = (distance_values > 0)
             positive_values = np.extract(positive_value_mask, distance_values)
             positive_values = np.append(positive_values, 0.0)
