@@ -1,4 +1,5 @@
 import argparse
+import numpy as np
 
 import torch
 import torch.nn as nn
@@ -160,26 +161,34 @@ class SupConLoss(nn.Module):
         # Only positive pair or candidates distance matrix
         pos_distances = mask * distances
 
-        # Define the top k items with the highest distance and make mask based on the distance.
-        # The top k value is upper bound.
-        pos_topk = torch.topk(pos_distances, self.args.pos_candidate)
-        pos_topk_mask = (pos_topk.values > 0)  # If the value is 0, it is not the same label.
-        pos_topk_idx = pos_topk_mask * pos_topk.indices
+        # Threshold calculation and whether to use
+        if self.args.threshold_option:
+            # Calculate quantile threshold by distance values
+            distance_values = pos_distances.view(-1).detach().numpy()
+            positive_value_mask = (distance_values > 0)
+            positive_values = np.extract(positive_value_mask, distance_values)
+            positive_values = np.append(positive_values, 0.0)
+            threshold = np.quantile(positive_values,
+                                    q=self.args.pos_threshold,
+                                    axis=0,
+                                    keepdims=False)
+            threshold = np.float32(threshold)
 
-        # Make positive pair or candidates distance mask
-        pos_dist_mask = torch.scatter(
-            torch.zeros_like(pos_distances),
-            dim=1,
-            index=pos_topk_idx,
-            value=1)
+            # Define threshold mask
+            pos_threshold_mask = (pos_distances >= threshold)
 
-        # Process extracting upper & lower triangular matrix
-        pos_upper_triu = torch.triu(pos_dist_mask, diagonal=1)
-        pos_lower_triu = pos_upper_triu.T
+            # Make positive pair or candidates distance mask
+            pos_dist_mask = pos_threshold_mask * torch.ones_like(pos_distances)
 
-        # Define our proposed method mask (same action labels and top k items with the highest distance)
-        pos_triu = pos_upper_triu + pos_lower_triu
-        final_pos_dist_mask = torch.max(pos_triu, self.fixed_pos_mask)
+        else:  # Same as Original Supervised Contrastive Learning
+            # Define positive mask
+            pos_mask = (pos_distances > 0)
+
+            # Make positive pair or candidates distance mask
+            pos_dist_mask = pos_mask * torch.ones_like(pos_distances)
+
+        # Define our proposed method mask (same action labels and the positive value distance)
+        final_pos_dist_mask = torch.max(pos_dist_mask, self.fixed_pos_mask)
 
         # Compute logits
         anchor_dot_contrast = torch.div(

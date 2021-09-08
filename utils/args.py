@@ -116,8 +116,10 @@ def stcl_parser():
                         help='Temperature for loss function (SupCon)')
     parser.add_argument('--base_scl_temperature', type=float, default=0.1,
                         help='SupCon temperature scaling factor (SupCon)')
-    parser.add_argument('--pos_candidate', type=int, default=32,
-                        choices=[32, 16, 8],
+    parser.add_argument('--threshold_option', type=bool,
+                        default=True, help='Calculate quantile threshold by distance values switch')
+    parser.add_argument('--pos_threshold', type=float, default=0.5,
+                        choices=[0.25, 0.5, 0.75],
                         help='Number of false negative or positive candidate based on euclidean distance')
 
     # Experiment Option (UCB, STDIM, SSL)
@@ -128,7 +130,7 @@ def stcl_parser():
                         choices=['stdim', 'none'],
                         help='SpatioTemporal Contrastive Learning Method Switch')
     parser.add_argument('--ssl_option', type=str,
-                        default='simclr', metavar='ARCH',
+                        default='supcon', metavar='ARCH',
                         choices=['simclr' 'supcon', 'none'],
                         help='Self-Supervised/Supervised Contrastive Learning Method Switch')
 

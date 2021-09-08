@@ -63,8 +63,10 @@ if __name__ == '__main__':
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
 
-    experiments = [1840, 9178, 2885, 11697, 4690,
-                   6877, 2436, 7749, 2584, 396]
+    # experiments = [1840, 9178, 2885, 11697, 4690,
+    #                6877, 2436, 7749, 2584, 396]
+
+    experiments = [1840]
 
     # Baseline
     # for i, exp_seed in enumerate(experiments):
@@ -82,6 +84,8 @@ if __name__ == '__main__':
         args.stcl_option = 'stdim'
         args.ucb_option = True
         args.ssl_option = 'supcon'
+        args.threshold_option = False
+        args.pos_threshold = None
 
         for game_name in game_list:
             main(args, game_name, exp_num=int(i+1))
