@@ -84,8 +84,8 @@ if __name__ == '__main__':
         args.stcl_option = 'stdim'  # Fix
         args.ucb_option = True  # Fix
         args.ssl_option = 'supcon'  # Fix
-        args.topk_option = True  # Change
-        args.pos_candidate = 2  # Change
+        args.topk_option = False  # Change
+        args.pos_candidate = None  # Change
 
         for game_name in game_list:
             main(args, game_name, exp_num=int(i+1))

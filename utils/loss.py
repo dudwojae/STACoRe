@@ -165,7 +165,7 @@ class SupConLoss(nn.Module):
         # The top k value is upper bound.
         if self.args.topk_option:
             pos_topk = torch.topk(pos_distances, k=self.args.pos_candidate)
-            pos_topk_mask = (pos_topk.values > 0)  # If the value is 0, it is not the same label.
+            pos_topk_mask = (pos_topk.values > 0.0)  # If the value is 0, it is not the same label.
             pos_topk_idx = pos_topk_mask * pos_topk.indices
 
             # Make positive pair or candidates distance mask
@@ -177,7 +177,7 @@ class SupConLoss(nn.Module):
 
         else:  # Same as Original Supervised Contrastive Learning
             # Define positive mask
-            pos_mask = (pos_distances > 0)
+            pos_mask = (pos_distances > 0.0)
 
             # Make positive pair or candidates distance mask
             pos_dist_mask = pos_mask * torch.ones_like(pos_distances)

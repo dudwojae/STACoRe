@@ -277,16 +277,22 @@ class STCLAgent:
         torch.nn.utils.clip_grad_norm_(self.optim_params, self.args.clip_value)
         self.optimizer.step()
 
-        # Save SSL Loss with RL Loss
-        if timesteps % 100 == 0:
+        # Save SSL Loss with RL Loss & Save number of action labels
+        if timesteps % 5 == 0:
             if self.spatiotemporal_on and self.ssl_on:  # Proposed Method
                 self.log_loss(f'Reinforcement Learning = {rl_loss.mean().item()}'
                               f'| Self-Supervised Learning = {ssl_loss.item()}'
                               f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}')
 
+                self.log_action(f'Number of Steps = {timesteps}'
+                                f'| Batch of Action Labels = {actions}')
+
             elif self.spatiotemporal_on and not self.ssl_on:  # Baseline
                 self.log_loss(f'Reinforcement Learning = {rl_loss.mean().item()}'
                               f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}')
+
+                self.log_action(f'Number of Steps = {timesteps}'
+                                f'| Batch of Action Labels = {actions}')
 
         # Update priorities of sampled transitions
         memory.update_priorities(idxs, loss.detach().cpu().numpy())
@@ -312,6 +318,21 @@ class STCLAgent:
     def log_loss(self,
                  s: str,
                  name='loss.txt'):
+
+        filename = os.path.join(self.result_path, name)
+
+        if not os.path.exists(filename) or s is None:
+            f = open(filename, 'w')
+
+        else:
+            f = open(filename, 'a')
+
+        f.write(str(s) + '\n')
+        f.close()
+    
+    def log_action(self,
+                   s: str,
+                   name='action.txt'):
 
         filename = os.path.join(self.result_path, name)
 
