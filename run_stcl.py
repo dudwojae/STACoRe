@@ -78,14 +78,37 @@ if __name__ == '__main__':
     #     for game_name in game_list:
     #         main(args, game_name, exp_num=int(i+1))
 
-    # Proposed Method
-    for i, exp_seed in enumerate(experiments):
-        args.seed = int(exp_seed)
-        args.stcl_option = 'stdim'  # Fix
-        args.ucb_option = True  # Fix
-        args.ssl_option = 'supcon'  # Fix
-        args.topk_option = False  # Change
-        args.pos_candidate = None  # Change
+    # Proposed Method (quanile)
+    if args.threshold_option == 'quantile':
+        for i, exp_seed in enumerate(experiments):
+            args.seed = int(exp_seed)
+            args.stcl_option = 'stdim'  # Fix
+            args.ucb_option = True  # Fix
+            args.ssl_option = 'supcon'  # Fix
+            args.num_threshold = 0.1  # Change
 
-        for game_name in game_list:
-            main(args, game_name, exp_num=int(i+1))
+            for game_name in game_list:
+                main(args, game_name, exp_num=int(i+1))
+
+    # Proposed Method (topk)
+    elif args.threshold_option == 'topk':
+        for i, exp_seed in enumerate(experiments):
+            args.seed = int(exp_seed)
+            args.stcl_option = 'stdim'  # Fix
+            args.ucb_option = True  # Fix
+            args.ssl_option = 'supcon'  # Fix
+            args.num_topk = 16  # Change
+
+            for game_name in game_list:
+                main(args, game_name, exp_num=int(i+1))
+
+    else:
+        # Proposed Method (Original SCL)
+        for i, exp_seed in enumerate(experiments):
+            args.seed = int(exp_seed)
+            args.stcl_option = 'stdim'  # Fix
+            args.ucb_option = True  # Fix
+            args.ssl_option = 'supcon'  # Fix
+
+            for game_name in game_list:
+                main(args, game_name, exp_num=int(i+1))

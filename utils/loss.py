@@ -161,10 +161,26 @@ class SupConLoss(nn.Module):
         # Only positive pair or candidates distance matrix
         pos_distances = mask * distances
 
+        # Define quantile threshold calculation
+        if self.args.threshold_option == 'quantile':
+            # Calculate qunatile threshold by full distance matrix
+            unique_distances = distances.cpu().detach().unique().numpy()
+            threshold = np.quantile(unique_distances,
+                                    q=self.args.num_threshold,
+                                    axis=0,
+                                    keepdims=False)
+            threshold = np.float32(threshold)
+
+            # Define threshold mask
+            pos_threshold_mask = (pos_distances >= threshold)
+
+            # Make positive pair or candidates distance mask
+            pos_dist_mask = pos_threshold_mask * torch.ones_like(pos_distances)
+
         # Define the top k items with the highest distance and make mask based on the distance.
         # The top k value is upper bound.
-        if self.args.topk_option:
-            pos_topk = torch.topk(pos_distances, k=self.args.pos_candidate)
+        elif self.args.threshold_option == 'topk':
+            pos_topk = torch.topk(pos_distances, k=self.args.num_topk)  # by row
             pos_topk_mask = (pos_topk.values > 0.0)  # If the value is 0, it is not the same label.
             pos_topk_idx = pos_topk_mask * pos_topk.indices
 
@@ -175,6 +191,10 @@ class SupConLoss(nn.Module):
                 index=pos_topk_idx,
                 value=1)
 
+            # Transpose pos_dist_mask & Multiplication mask same as action
+            pos_dist_mask = pos_dist_mask.T
+            pos_dist_mask = pos_dist_mask * mask
+
         else:  # Same as Original Supervised Contrastive Learning
             # Define positive mask
             pos_mask = (pos_distances > 0.0)
@@ -182,13 +202,8 @@ class SupConLoss(nn.Module):
             # Make positive pair or candidates distance mask
             pos_dist_mask = pos_mask * torch.ones_like(pos_distances)
 
-        # Process extracting upper & lower triangular matrix because of mask matrix is symmetric.
-        pos_upper_triu = torch.triu(pos_dist_mask, diagonal=1)
-        pos_lower_triu = pos_upper_triu.T
-
         # Define our proposed method mask (same action labels and the positive value distance)
-        pos_triu = pos_upper_triu + pos_lower_triu
-        final_pos_dist_mask = torch.max(pos_triu, self.fixed_pos_mask)
+        final_pos_dist_mask = torch.max(pos_dist_mask, self.fixed_pos_mask)
 
         # Compute logits
         anchor_dot_contrast = torch.div(
@@ -210,4 +225,4 @@ class SupConLoss(nn.Module):
         loss = - (self.args.scl_temperature / self.args.base_scl_temperature) * mean_log_prob_pos
         loss = loss.view(n_views, self.args.batch_size).mean()
 
-        return loss
+        return loss, final_pos_dist_mask.sum(1)

@@ -193,8 +193,8 @@ class STCLAgent:
         elif self.args.ssl_option == 'supcon':
             _, _, supcon_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
 
-            ssl_loss = self.supcon_loss(features=supcon_z,
-                                        labels=actions.detach())
+            ssl_loss, num_positives = self.supcon_loss(features=supcon_z,
+                                                       labels=actions.detach())
 
         if self.args.stcl_option == 'stdim':
             # ST-DIM Update
@@ -278,21 +278,20 @@ class STCLAgent:
         self.optimizer.step()
 
         # Save SSL Loss with RL Loss & Save number of action labels
-        if timesteps % 5 == 0:
+        if timesteps % 10 == 0:
             if self.spatiotemporal_on and self.ssl_on:  # Proposed Method
-                self.log_loss(f'Reinforcement Learning = {rl_loss.mean().item()}'
-                              f'| Self-Supervised Learning = {ssl_loss.item()}'
-                              f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}')
-
-                self.log_action(f'Number of Steps = {timesteps}'
-                                f'| Batch of Action Labels = {actions}')
+                self.log_loss_action(f'Number of Steps = {timesteps}'
+                                     f'| Reinforcement Learning = {rl_loss.mean().item()}'
+                                     f'| Self-Supervised Learning = {ssl_loss.item()}'
+                                     f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}'
+                                     f'| Batch of Action Labels = {actions}'
+                                     f'| Number of Positives = {sum(num_positives) / 4096}')
 
             elif self.spatiotemporal_on and not self.ssl_on:  # Baseline
-                self.log_loss(f'Reinforcement Learning = {rl_loss.mean().item()}'
-                              f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}')
-
-                self.log_action(f'Number of Steps = {timesteps}'
-                                f'| Batch of Action Labels = {actions}')
+                self.log_loss_action(f'Number of Steps = {timesteps}'
+                                     f'| Reinforcement Learning = {rl_loss.mean().item()}'
+                                     f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}'
+                                     f'| Batch of Action Labels = {actions}')
 
         # Update priorities of sampled transitions
         memory.update_priorities(idxs, loss.detach().cpu().numpy())
@@ -315,24 +314,9 @@ class STCLAgent:
             auglist = pd.DataFrame(self.aug_func_list, columns=['aug1', 'aug2'])
             auglist.to_csv(os.path.join(path, 'AugCombination.csv'), index=True)
 
-    def log_loss(self,
+    def log_loss_action(self,
                  s: str,
-                 name='loss.txt'):
-
-        filename = os.path.join(self.result_path, name)
-
-        if not os.path.exists(filename) or s is None:
-            f = open(filename, 'w')
-
-        else:
-            f = open(filename, 'a')
-
-        f.write(str(s) + '\n')
-        f.close()
-    
-    def log_action(self,
-                   s: str,
-                   name='action.txt'):
+                 name='loss_and_action.txt'):
 
         filename = os.path.join(self.result_path, name)
 

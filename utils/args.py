@@ -116,10 +116,15 @@ def stcl_parser():
                         help='Temperature for loss function (SupCon)')
     parser.add_argument('--base_scl_temperature', type=float, default=0.1,
                         help='SupCon temperature scaling factor (SupCon)')
-    parser.add_argument('--topk_option', type=bool,
-                        default=True, help='Top k distance values selection switch')
-    parser.add_argument('--pos_candidate', type=int, default=2,
-                        choices=[2, 4, 6, 8],
+    parser.add_argument('--threshold_option', type=str,
+                        default='scl',
+                        choices=['quantile', 'topk', 'scl'],
+                        help='Top k distance values selection switch')
+    parser.add_argument('--num_threshold', type=float, default=0.1,
+                        choices=[0.1, 0.3, 0.5],
+                        help='Number of false negative or positive candidate based on euclidean distance')
+    parser.add_argument('--num_topk', type=int, default=2,
+                        choices=[2, 4, 6],
                         help='Number of false negative or positive candidate based on euclidean distance')
 
     # Experiment Option (UCB, STDIM, SSL)
