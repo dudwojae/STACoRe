@@ -117,13 +117,13 @@ def stcl_parser():
     parser.add_argument('--base_scl_temperature', type=float, default=0.1,
                         help='SupCon temperature scaling factor (SupCon)')
     parser.add_argument('--threshold_option', type=str,
-                        default='scl',
+                        default='topk',
                         choices=['quantile', 'topk', 'scl'],
                         help='Top k distance values selection switch')
     parser.add_argument('--num_threshold', type=float, default=0.1,
                         choices=[0.1, 0.3, 0.5],
                         help='Number of false negative or positive candidate based on euclidean distance')
-    parser.add_argument('--num_topk', type=int, default=2,
+    parser.add_argument('--num_topk', type=int, default=4,
                         choices=[2, 4, 6],
                         help='Number of false negative or positive candidate based on euclidean distance')
 

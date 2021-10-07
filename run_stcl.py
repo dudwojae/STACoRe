@@ -16,6 +16,7 @@ from itertools import product
 import warnings
 warnings.filterwarnings(action='ignore')
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 def my_product(inp):
     return (dict(zip(inp.keys(), values)) for values in product(*inp.values()))
@@ -63,10 +64,10 @@ if __name__ == '__main__':
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
 
-    # experiments = [1840, 9178, 2885, 11697, 4690,
-    #                6877, 2436, 7749, 2584, 396]
+    experiments = [1840, 9178, 2885, 11697, 4690,
+                   6877, 2436, 7749, 2584, 396]
 
-    experiments = [1840]
+    # experiments = [1840]
 
     # Baseline
     # for i, exp_seed in enumerate(experiments):
