@@ -56,17 +56,14 @@ if __name__ == '__main__':
     parser = actscore_parser()
     args = parser.parse_args()
 
-    # game_list = ['alien', 'amidar', 'assault', 'asterix', 'bank_heist',
-    #              'battle_zone', 'boxing', 'breakout', 'chopper_command',
-    #              'crazy_climber', 'demon_attack', 'freeway', 'frostbite',
-    #              'gopher', 'hero', 'jamesbond', 'kangaroo', 'krull',
-    #              'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
-    #              'qbert', 'road_runner', 'seaquest', 'up_n_down']
-
-    game_list = ['kangaroo']
+    game_list = ['alien', 'amidar', 'assault', 'asterix', 'bank_heist',
+                 'battle_zone', 'boxing', 'breakout', 'chopper_command',
+                 'crazy_climber', 'demon_attack', 'freeway', 'frostbite',
+                 'gopher', 'hero', 'jamesbond', 'kangaroo', 'krull',
+                 'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
+                 'qbert', 'road_runner', 'seaquest', 'up_n_down']
     
-    experiments = [1840, 9178, 2885, 11697, 4690,
-                   6877, 2436, 7749, 2584, 396]
+    experiments = list(np.random.randint(10000, size=10))
 
     if args.ssl_option == 'none':
         # Baseline
