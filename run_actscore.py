@@ -88,7 +88,6 @@ if __name__ == '__main__':
                 for game_name in game_list:
                     main(args, game_name, exp_num=int(i+1))
 
-        # Proposed Method (topk)
         elif args.threshold_option == 'topk':
             for i, exp_seed in enumerate(experiments):
                 args.seed = int(exp_seed)
@@ -100,7 +99,6 @@ if __name__ == '__main__':
                     main(args, game_name, exp_num=int(i+1))
 
         else:
-            # Proposed Method (Original SCL)
             for i, exp_seed in enumerate(experiments):
                 args.seed = int(exp_seed)
                 args.stcl_option = 'stdim'  # Fix
