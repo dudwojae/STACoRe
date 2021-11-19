@@ -3,7 +3,7 @@ import argparse
 
 
 def actscore_parser():
-    parser = argparse.ArgumentParser(description='Self-supervised learning coupled with efficient Rainbow')
+    parser = argparse.ArgumentParser(description='ActSCoRe coupled with Rainbow DQN')
 
     # environment option (Don't Change)
     parser.add_argument('--id', type=str, default='default',
