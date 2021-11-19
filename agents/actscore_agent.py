@@ -11,12 +11,12 @@ import torch.nn as nn
 
 import kornia.augmentation as aug
 
-from networks.stcl_network import STCL_DQN, Classifier
+from networks.actscore_network import ActSCoRe_DQN, Classifier
 from utils.automatic import UCBAugmentation
-from utils.loss import STDIMLoss, SimCLRLoss, SupConLoss
+from utils.loss import STDIMLoss, ActSCoReLoss
 
 
-class STCLAgent:
+class ActSCoReAgent:
     def __init__(self,
                  args: argparse,
                  env,
@@ -35,8 +35,8 @@ class STCLAgent:
         self.coeff = args.lambda_coef if args.game in ['pong', 'boxing', 'private_eye', 'freeway'] else 1.
 
         # Define Model (Default: Off-Policy Reinforcement Learning)
-        self.online_net = STCL_DQN(args, self.action_space).to(device=args.cuda)
-        self.target_net = STCL_DQN(args, self.action_space).to(device=args.cuda)
+        self.online_net = ActSCoRe_DQN(args, self.action_space).to(device=args.cuda)
+        self.target_net = ActSCoRe_DQN(args, self.action_space).to(device=args.cuda)
 
         # Load Pre-trained Model If Provided
         if args.model:
@@ -85,15 +85,9 @@ class STCLAgent:
         else:
             self.spatiotemporal_on = False
 
-        # Define Self-Supervised Contrastive Learning Methods
-        if self.args.ssl_option == 'simclr':
-            self.simclr_loss = SimCLRLoss(args=args)
-
-            self.ssl_on = True
-
         # Define Supervised Contrastive Learning Methods
-        elif self.args.ssl_option == 'supcon':
-            self.supcon_loss = SupConLoss(args=args)
+        if self.args.ssl_option == 'actscore':
+            self.actscore_loss = ActSCoReLoss(args=args)
 
             self.ssl_on = True
 
@@ -184,17 +178,11 @@ class STCLAgent:
         else:
             raise NotImplementedError('ST-DIM switch is off...')
 
-        if self.args.ssl_option == 'simclr':
-            _, _, simclr_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
-            logits, labels = self.simclr_loss(features=simclr_z)
-
-            ssl_loss = (nn.CrossEntropyLoss()(logits, labels)).to(device=self.args.cuda)
-
-        elif self.args.ssl_option == 'supcon':
+        if self.args.ssl_option == 'actscore':
             _, _, supcon_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
 
-            ssl_loss, num_positives = self.supcon_loss(features=supcon_z,
-                                                       labels=actions.detach())
+            ssl_loss, num_positives = self.actscore_loss(features=supcon_z,
+                                                         labels=actions.detach())
 
         if self.args.stcl_option == 'stdim':
             # ST-DIM Update
@@ -278,26 +266,23 @@ class STCLAgent:
         self.optimizer.step()
 
         # Save SSL Loss with RL Loss & Save number of action labels
-        if timesteps % 10 == 0:
+        if timesteps % 100 == 0:
             if self.spatiotemporal_on and self.ssl_on:  # Proposed Method
-                self.log_loss_action(f'Number of Steps = {timesteps}'
-                                     f'| Reinforcement Learning = {rl_loss.mean().item()}'
+                self.log_loss_action(f'| Reinforcement Learning = {rl_loss.mean().item()}'
                                      f'| Self-Supervised Learning = {ssl_loss.item()}'
                                      f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}'
                                      f'| Batch of Action Labels = {actions}'
                                      f'| Number of Positives = {sum(num_positives) / 4096}')
 
             elif self.spatiotemporal_on and not self.ssl_on:  # Baseline
-                self.log_loss_action(f'Number of Steps = {timesteps}'
-                                     f'| Reinforcement Learning = {rl_loss.mean().item()}'
+                self.log_loss_action(f'| Reinforcement Learning = {rl_loss.mean().item()}'
                                      f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}'
                                      f'| Batch of Action Labels = {actions}')
 
         # Update priorities of sampled transitions
         memory.update_priorities(idxs, loss.detach().cpu().numpy())
 
-        # Update Upper Confidence Bound with SSL Loss, RL Loss
-        # FIXME: Update with ssl_loss (old: rl_loss.mean() + ssl_loss)
+        # Update Upper Confidence Bound with SSL Loss
         if self.args.ucb_option:
             self.ucb.update_ucb_values(augmentation_id=self.current_aug_id,
                                        batch_returns=ssl_loss)
@@ -315,8 +300,8 @@ class STCLAgent:
             auglist.to_csv(os.path.join(path, 'AugCombination.csv'), index=True)
 
     def log_loss_action(self,
-                 s: str,
-                 name='loss_and_action.txt'):
+                        s: str,
+                        name='loss_and_action.txt'):
 
         filename = os.path.join(self.result_path, name)
 

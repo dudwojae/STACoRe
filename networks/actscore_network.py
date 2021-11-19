@@ -96,11 +96,11 @@ class MLPHead(nn.Module):
 
 
 # Q-value & Self-Supervised & SpatioTemporal
-class STCL_DQN(nn.Module):
+class ActSCoRe_DQN(nn.Module):
     def __init__(self,
                  args: argparse,
                  action_space: int):
-        super(STCL_DQN, self).__init__()
+        super(ActSCoRe_DQN, self).__init__()
 
         self.args = args
         self.atoms = args.atoms

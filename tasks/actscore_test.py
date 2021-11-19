@@ -11,7 +11,7 @@ from plotly.graph_objs.scatter import Line
 from environment.env import Atari_Env
 
 
-# Test ST-DIM Rainbow
+# Test ActSCoRe Rainbow
 def test(args, T, learner, val_memory, metrics, result_path, evaluate=False):
     env = Atari_Env(args)
     env.eval()

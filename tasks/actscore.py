@@ -1,7 +1,6 @@
 from __future__ import division
 
 import os
-import bz2
 import pickle
 import argparse
 import numpy as np
@@ -12,11 +11,11 @@ from datetime import datetime
 from utils.memory import ReplayMemory
 from environment.env import Atari_Env
 
-from singleagents.stcl_agent import STCLAgent
-from tasks.stcl_test import test
+from agents.actscore_agent import ActSCoReAgent
+from tasks.actscore_test import test
 
 
-class STCL_Rainbow:
+class ActSCoRe:
     def __init__(self,
                  args: argparse,
                  result_path: str):
@@ -29,10 +28,10 @@ class STCL_Rainbow:
         self.env.train()
         self.action_space = self.env.action_space()
 
-        # Define STCL Rainbow Agent
-        self.learner = STCLAgent(args,
-                                 self.env,
-                                 self.result_path)
+        # Define ActSCoRe Rainbow Agent
+        self.learner = ActSCoReAgent(args,
+                                     self.env,
+                                     self.result_path)
 
         # Define metrics
         self.metrics = {'steps': [],
@@ -40,7 +39,7 @@ class STCL_Rainbow:
                         'Qs': [],
                         'best_avg_reward': -float('inf')}
 
-    def run_stcl_rainbow(self):
+    def run_actscore(self):
         # If a model is provided, and evaluate is fale, presumably we want to resume, so try to load memory
         if self.args.model is not None and not self.args.evaluate:
 
@@ -72,7 +71,7 @@ class STCL_Rainbow:
             T += 1
 
         if self.args.evaluate:
-            # Set STCL_DQN (online network) to evaluation mode
+            # Set ActSCoRe_DQN (online network) to evaluation mode
             self.learner.eval()
             avg_reward, avg_Q = test(self.args,
                                      0,
@@ -117,7 +116,7 @@ class STCL_Rainbow:
                                               timesteps=T)
 
                     if T % self.args.evaluation_interval == 0:
-                        # Set STCL_DQN (online network) to evaluation mode
+                        # Set _DQN (online network) to evaluation mode
                         self.learner.eval()
 
                         # Test
@@ -137,7 +136,7 @@ class STCL_Rainbow:
                             self.log(f'T = {str(T)} / {str(self.args.T_max)} '
                                      f'| Avg.reward: {str(avg_reward)} | Avg. Q: {str(avg_Q)}')
 
-                        # Set STCL_DQN (online network) back to training mode
+                        # Set ActSCoRe_DQN (online network) back to training mode
                         self.learner.train()
 
                         # If memory path provided, save it

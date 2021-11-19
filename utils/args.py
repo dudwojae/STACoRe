@@ -2,7 +2,7 @@ import atari_py
 import argparse
 
 
-def stcl_parser():
+def actscore_parser():
     parser = argparse.ArgumentParser(description='Self-supervised learning coupled with efficient Rainbow')
 
     # environment option (Don't Change)
@@ -22,7 +22,7 @@ def stcl_parser():
                         help='Discretized size of value distribution')
 
     # Rainbow parameter (Don't Change)
-    # FIXME: architecture data_effieicnt -> canonical (Same as SPR)
+    # architecture data_effieicnt -> canonical (Same as SPR)
     parser.add_argument('--architecture', type=str,
                         default='canonical', metavar='ARCH',
                         choices=['canonical', 'data_efficient'],
@@ -56,7 +56,7 @@ def stcl_parser():
                         help='Experience replay memory capacity')
 
     # Training hyperparamters (Don't Change)
-    # FIXME: multi_step 20 -> 10 (Same as SPR)
+    # multi_step 20 -> 10 (Same as SPR)
     parser.add_argument('--multi_step', type=int, default=10, metavar='n',
                         help='Number of steps for multi-step return')
     parser.add_argument('--gamma', type=float, default=0.99, metavar='γ',
@@ -65,7 +65,7 @@ def stcl_parser():
                         help='Batch size')
     parser.add_argument('--model', type=str, metavar='PARAMS',
                         help='Pretrained model (state dict)')
-    # FIXME: learn_start 1600 -> 2000 (Same as SPR)
+    # learn_start 1600 -> 2000 (Same as SPR)
     parser.add_argument('--learn_start', type=int, default=int(2e3), metavar='STEPS',
                         help='Number of steps before starting training')
     parser.add_argument('--T_max', type=int, default=int(1e5), metavar='STEPS',
@@ -74,10 +74,9 @@ def stcl_parser():
                         help='Frequency of sampling from memory')
     parser.add_argument('--reward_clip', type=int, default=1, metavar='VALUE',
                         help='Reward clipping (0 to disable)')
-    # FIXME: target_update 2000 -> 1 (Same as SPR)
+    # target_update 2000 -> 1 (Same as SPR)
     parser.add_argument('--target_update', type=int, default=1, metavar='τ',
                         help='Number of steps after which to update target network')
-    # FIXME: Find Optimal Lambda
     parser.add_argument('--lambda_coef', type=float, default=1.,
                         help='Weighted contrastive loss coefficient')
 
@@ -117,7 +116,7 @@ def stcl_parser():
     parser.add_argument('--base_scl_temperature', type=float, default=0.1,
                         help='SupCon temperature scaling factor (SupCon)')
     parser.add_argument('--threshold_option', type=str,
-                        default='scl',
+                        default='quantile',
                         choices=['quantile', 'topk', 'scl'],
                         help='Top k distance values selection switch')
     parser.add_argument('--num_threshold', type=float, default=0.1,
@@ -133,11 +132,11 @@ def stcl_parser():
     parser.add_argument('--stcl_option', type=str,
                         default='stdim', metavar='ARCH',
                         choices=['stdim', 'none'],
-                        help='SpatioTemporal Contrastive Learning Method Switch')
+                        help='Spatio-Temporal Contrastive Learning Method Switch')
     parser.add_argument('--ssl_option', type=str,
-                        default='supcon', metavar='ARCH',
-                        choices=['simclr' 'supcon', 'none'],
-                        help='Self-Supervised/Supervised Contrastive Learning Method Switch')
+                        default='actscore', metavar='ARCH',
+                        choices=['actscore', 'none'],
+                        help='Supervised Contrastive Learning Method Switch')
 
     # Upper Confidence Bound Multi-Armed Bandit Problem parameter
     parser.add_argument('--ucb_exploration_coef', type=float, default=0.5,
