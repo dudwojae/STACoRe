@@ -169,8 +169,12 @@ class ActSCoReAgent:
                 self.current_aug_id, aug_list = self.ucb.select_ucb_aug(timestep=timesteps)
                 aug_sequential = nn.Sequential(*aug_list)
 
-                aug_states1 = aug_sequential(init_states1)
-                aug_states2 = aug_sequential(init_states2)
+                aug_states1 = aug_sequential[0](init_states1)
+                aug_states2 = aug_sequential[1](init_states2)
+
+            elif not self.args.ucb_option and self.ssl_on:  # Ablation Studies
+                aug_states1 = init_states1
+                aug_states2 = init_states2
 
             else:
                 raise NotImplementedError('We need to make the UCB and SSL switch mode the same.')

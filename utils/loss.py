@@ -135,7 +135,7 @@ class ActSCoReLoss(nn.Module):
             threshold = np.float32(threshold)
 
             # Define threshold mask
-            pos_threshold_mask = (pos_distances >= threshold)
+            pos_threshold_mask = (pos_distances > threshold)
 
             # Make positive pair or candidates distance mask
             pos_dist_mask = pos_threshold_mask * torch.ones_like(pos_distances)

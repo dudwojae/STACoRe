@@ -63,6 +63,9 @@ if __name__ == '__main__':
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
     
+    # experiments = [1840, 9178, 2885, 11697, 4690,
+    #                6877, 2436, 7749, 2584, 396]
+
     experiments = list(np.random.randint(10000, size=10))
 
     if args.ssl_option == 'none':
@@ -77,7 +80,7 @@ if __name__ == '__main__':
 
     elif args.ssl_option == 'actscore':
 
-        # Proposed Method (quanile)
+        # Proposed Method (quantile)
         if args.threshold_option == 'quantile':
             for i, exp_seed in enumerate(experiments):
                 args.seed = int(exp_seed)
