@@ -107,8 +107,6 @@ def actscore_parser():
                         help='Network hidden size')
     parser.add_argument('--local_depth', type=int, default=64, metavar='SIZE',
                         help='Feature map depth size')
-    parser.add_argument('--temperature', type=float, default=0.5,
-                        help='Logit scaling factor (SimCLR)')
 
     # Supervised Contrastive Learning parameter
     parser.add_argument('--scl_temperature', type=float, default=0.1,

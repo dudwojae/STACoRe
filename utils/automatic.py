@@ -16,7 +16,6 @@ class UCBAugmentation(object):
         self.args = args
 
         # Image-based augmentation option (Upper Confidence Bound)
-        # Delete CutOut Operation
         self.augmentations = {
             'Affine': aug.RandomAffine(degrees=5.,
                                        translate=(0.14, 0.14),

@@ -62,7 +62,7 @@ if __name__ == '__main__':
                  'gopher', 'hero', 'jamesbond', 'kangaroo', 'krull',
                  'kung_fu_master', 'ms_pacman', 'pong', 'private_eye',
                  'qbert', 'road_runner', 'seaquest', 'up_n_down']
-    
+
     experiments = list(np.random.randint(10000, size=10))
 
     if args.ssl_option == 'none':
@@ -81,7 +81,7 @@ if __name__ == '__main__':
         if args.threshold_option == 'quantile':
             for i, exp_seed in enumerate(experiments):
                 args.seed = int(exp_seed)
-                args.stcl_option = 'stdim'  # Fix
+                args.stcl_option = 'stdim'  # Change
                 args.ucb_option = True  # Fix
                 args.num_threshold = 0.5  # Change
 

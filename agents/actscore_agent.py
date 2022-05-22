@@ -165,7 +165,7 @@ class ActSCoReAgent:
             if not self.args.ucb_option and not self.ssl_on:  # Baseline
                 print('We are experimenting with the baseline model.')
 
-            elif self.args.ucb_option and self.ssl_on:  # Proposed Method
+            elif self.args.ucb_option and self.ssl_on:  # Proposed Method + ST-DIM
                 self.current_aug_id, aug_list = self.ucb.select_ucb_aug(timestep=timesteps)
                 aug_sequential = nn.Sequential(*aug_list)
 
@@ -180,15 +180,28 @@ class ActSCoReAgent:
                 raise NotImplementedError('We need to make the UCB and SSL switch mode the same.')
 
         else:
-            raise NotImplementedError('ST-DIM switch is off...')
 
-        if self.args.ssl_option == 'actscore':
+            if self.args.ucb_option and self.ssl_on:  # Proposed Method
+                self.current_aug_id, aug_list = self.ucb.select_ucb_aug(timestep=timesteps)
+                aug_sequential = nn.Sequential(*aug_list)
+
+                aug_states1 = aug_sequential[0](init_states1)
+                aug_states2 = aug_sequential[1](init_states2)
+
+            elif not self.args.ucb_option and self.ssl_on:  # Ablation Studies
+                aug_states1 = init_states1
+                aug_states2 = init_states2
+
+            else:
+                raise NotImplementedError('UCB and SSL switch are off...')
+
+        if self.ssl_on:  # ActSCoRe
             _, _, supcon_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
 
             ssl_loss, num_positives = self.actscore_loss(features=supcon_z,
                                                          labels=actions.detach())
 
-        if self.args.stcl_option == 'stdim':
+        if self.spatiotemporal_on:
             # ST-DIM Update
             _, feature_map_t, stdim_z = self.online_net(init_states, log=True)  # anchor
             _, feature_map_t1, _ = self.online_net(init_next_states, log=True)  # positives
@@ -256,11 +269,14 @@ class ActSCoReAgent:
 
         rl_loss = -torch.sum(m * log_ps_a, 1)
 
-        if self.spatiotemporal_on and self.ssl_on:  # Proposed Method
+        if self.spatiotemporal_on and self.ssl_on:  # Proposed Method + ST-DIM
             loss = rl_loss + (self.coeff * (ssl_loss + stcl_loss))
 
         elif self.spatiotemporal_on and not self.ssl_on:  # Baseline
             loss = rl_loss + (self.coeff * stcl_loss)
+
+        elif not self.spatiotemporal_on and self.ssl_on:  # Proposed Method
+            loss = rl_loss + (self.coeff * ssl_loss)
 
         self.optimizer.zero_grad()
         total_loss = (weights * loss).mean()
@@ -282,6 +298,12 @@ class ActSCoReAgent:
                 self.log_loss_action(f'| Reinforcement Learning = {rl_loss.mean().item()}'
                                      f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}'
                                      f'| Batch of Action Labels = {actions}')
+
+            elif not self.spatiotemporal_on and self.ssl_on:  # Proposed Method
+                self.log_loss_action(f'| Reinforcement Learning = {rl_loss.mean().item()}'
+                                     f'| Self-Supervised Learning = {ssl_loss.item()}'
+                                     f'| Batch of Action Labels = {actions}'
+                                     f'| Number of Positives = {sum(num_positives) / 4096}')
 
         # Update priorities of sampled transitions
         memory.update_priorities(idxs, loss.detach().cpu().numpy())
