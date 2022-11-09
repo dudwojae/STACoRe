@@ -45,13 +45,13 @@ class STDIMLoss(nn.Module):
         return x1, x2, x1_l, x2_l, target
 
 
-class ActSCoReLoss(nn.Module):
+class STACoReLoss(nn.Module):
     """
     This code is modified Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.
     It also supports the unsupervised contrastive loss in SimCLR
     """
     def __init__(self, args: argparse):
-        super(ActSCoReLoss, self).__init__()
+        super(STACoReLoss, self).__init__()
 
         self.args = args
 

@@ -13,7 +13,7 @@ import kornia.augmentation as aug
 
 from networks.stacore_network import DQN, Classifier
 from utils.automatic import UCBAugmentation
-from utils.loss import STDIMLoss, ActSCoReLoss
+from utils.loss import STDIMLoss, STACoReLoss
 
 
 class STACoReAgent:
@@ -86,8 +86,8 @@ class STACoReAgent:
             self.spatiotemporal_on = False
 
         # Define Supervised Contrastive Learning Methods
-        if self.args.ssl_option == 'actscore':
-            self.actscore_loss = ActSCoReLoss(args=args)
+        if self.args.ssl_option == 'stacore':
+            self.stacore_loss = STACoReLoss(args=args)
 
             self.ssl_on = True
 
@@ -181,7 +181,7 @@ class STACoReAgent:
 
         else:
 
-            if self.args.ucb_option and self.ssl_on:  # ActSCoRe
+            if self.args.ucb_option and self.ssl_on:  # STACoRe
                 self.current_aug_id, aug_list = self.ucb.select_ucb_aug(timestep=timesteps)
                 aug_sequential = nn.Sequential(*aug_list)
 
@@ -195,10 +195,10 @@ class STACoReAgent:
             else:
                 raise NotImplementedError('UCB and SSL switch are off...')
 
-        if self.ssl_on:  # ActSCoRe
+        if self.ssl_on:  # STACoRe
             _, _, supcon_z = self.online_net(torch.cat([aug_states1, aug_states2], dim=0), log=True)
 
-            ssl_loss, num_positives = self.actscore_loss(features=supcon_z,
+            ssl_loss, num_positives = self.stacore_loss(features=supcon_z,
                                                          labels=actions.detach())
 
         if self.spatiotemporal_on:
@@ -275,7 +275,7 @@ class STACoReAgent:
         elif self.spatiotemporal_on and not self.ssl_on:  # Only ST-DIM
             loss = rl_loss + (self.coeff * stcl_loss)
 
-        elif not self.spatiotemporal_on and self.ssl_on:  # ActSCoRe
+        elif not self.spatiotemporal_on and self.ssl_on:  # STACoRe
             loss = rl_loss + (self.coeff * ssl_loss)
 
         self.optimizer.zero_grad()
@@ -299,7 +299,7 @@ class STACoReAgent:
                                      f'| SpatioTemporal Contrastive Learning = {stcl_loss.item()}'
                                      f'| Batch of Action Labels = {actions}')
 
-            elif not self.spatiotemporal_on and self.ssl_on:  # ActSCoRe
+            elif not self.spatiotemporal_on and self.ssl_on:  # STACoRe
                 self.log_loss_action(f'| Reinforcement Learning = {rl_loss.mean().item()}'
                                      f'| Self-Supervised Learning = {ssl_loss.item()}'
                                      f'| Batch of Action Labels = {actions}'

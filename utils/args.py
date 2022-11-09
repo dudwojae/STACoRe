@@ -132,8 +132,8 @@ def stacore_parser():
                         choices=['stdim', 'none'],
                         help='Spatio-Temporal Contrastive Learning Method Switch')
     parser.add_argument('--ssl_option', type=str,
-                        default='actscore', metavar='ARCH',
-                        choices=['actscore', 'none'],
+                        default='stacore', metavar='ARCH',
+                        choices=['stacore', 'none'],
                         help='Supervised Contrastive Learning Method Switch')
 
     # Upper Confidence Bound Multi-Armed Bandit Problem parameter

@@ -75,7 +75,7 @@ if __name__ == '__main__':
             for game_name in game_list:
                 main(args, game_name, exp_num=int(i+1))
 
-    elif args.ssl_option == 'actscore':
+    elif args.ssl_option == 'stacore':
 
         # Proposed Method (quantile)
         if args.threshold_option == 'quantile':
