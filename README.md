@@ -7,4 +7,6 @@ pip install -r requirements.txt
 ~~~
 
 # Train STACoRe
-Command line: python run_stacore.py
+~~~
+python run_stacore.py
+~~~
