@@ -3,3 +3,4 @@ This repository provides the code to implement the STACoRe.
 # Requirements
 g
 # STACoRe Training
+Command line: python run_stacore.py
