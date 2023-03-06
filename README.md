@@ -12,7 +12,7 @@ This repository provides the code to implement the STACoRe.
     ├── tasks                     
     │   ├── stacore.py            # Code to train or test STACoRe
     │   ├── stacore_test.py       # Code used when testing in stacore.py
-    ├── tasks                     
+    ├── utils                    
     │   ├── args.py               # Arguments needed to run the code
     │   ├── automatic.py          # Upper confidence bound (UCB) algorithm code for automatic data augmentation
     │   ├── layers.py             # Deep neural networks initialization
