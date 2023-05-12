@@ -22,6 +22,7 @@ This repository provides the code to implement the STACoRe.
     └── run_stacore.py            # The main run code
     
 # Installation
+The python version we used is 3.6.13.
 ~~~
 pip install -r requirements.txt
 ~~~
