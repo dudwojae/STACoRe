@@ -1,20 +1,19 @@
 atari-py==0.2.6
+einops==0.4.1
 kornia==0.5.5
-matplotlib @ file:///tmp/build/80754af9/matplotlib-suite_1613407855456/work
+matplotlib==3.3.2
 numpy==1.19.0
-numpydoc @ file:///tmp/build/80754af9/numpydoc_1605117425582/work
 opencv-python==4.5.1.48
-openpyxl @ file:///tmp/build/80754af9/openpyxl_1610651698508/work
+openpyxl==3.0.5
 pandas==1.1.5
 plotly==4.14.3
 pytorch-lightning==1.2.3
 scikit-image==0.16.2
-scikit-learn @ file:///tmp/build/80754af9/scikit-learn_1614446678517/work
-scipy @ file:///tmp/build/80754af9/scipy_1597686625380/work
-seaborn @ file:///tmp/build/80754af9/seaborn_1608578541026/work
+scikit-learn==0.23.2
+scipy==1.5.2
+seaborn==0.11.0
 tensorboard==2.4.1
 tensorboard-plugin-wit==1.8.0
 torch==1.8.0
-torchaudio==0.8.0a0+a751e1d
 torchvision==0.9.0
-tqdm @ file:///tmp/build/80754af9/tqdm_1611857934208/work
+tqdm==4.51.0
