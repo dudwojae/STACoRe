@@ -1,6 +1,6 @@
-# ======================================================================
-# This code is used from https://github.com/aravindsrinivas/curl_rainbow
-# ======================================================================
+# ==========================================================================
+# This code is utilized from https://github.com/aravindsrinivas/curl_rainbow
+# ==========================================================================
 from __future__ import division
 
 import os
