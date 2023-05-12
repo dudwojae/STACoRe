@@ -1,3 +1,6 @@
+# ==========================================================================
+# This code is utilized from https://github.com/aravindsrinivas/curl_rainbow
+# ==========================================================================
 import atari_py
 import argparse
 
